@@ -1,0 +1,11 @@
+matplotlib
+opencv-python
+scikit-learn
+trimesh
+Pillow
+pyrender
+pyglet==1.5.15
+tensorboard
+git+https://github.com/nghorbani/configer
+torchgeometry==0.1.2
+smplx==0.1.28
