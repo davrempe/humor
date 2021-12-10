@@ -4,3 +4,4 @@ body_models
 data
 checkpoints
 out
+preprocessing_amass.log

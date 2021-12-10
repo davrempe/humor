@@ -19,6 +19,10 @@ from viz.utils import viz_smpl_seq
 from utils.torch import copy2cpu as c2c
 from utils.transforms import batch_rodrigues, compute_world2aligned_mat, compute_world2aligned_joints_mat, axisangle2matrots
 
+import logging
+logging.basicConfig(filename='preprocessing_amass.log', level=logging.DEBUG)
+print = lambda x: logging.info(x)
+
 #
 # Processing options
 #
@@ -619,7 +623,8 @@ def main(config):
     smplh_paths = [config.smplh_root]*len(all_seq_in_files)
     data_paths = list(zip(all_seq_in_files, all_seq_out_files, smplh_paths))
 
-    for data_in in data_paths:
+    from tqdm.auto import tqdm
+    for data_in in tqdm(data_paths):
         process_seq(data_in)
 
     total_time = time.time() - start_time
