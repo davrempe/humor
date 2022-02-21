@@ -163,6 +163,11 @@ python humor/test/test_humor.py @./configs/test_humor_sampling_debug.cfg
 
 Try adding `--viz-pred-joints`, `--viz-smpl-joints`, or `--viz-contacts` to the end of the command to visualize more outputs, or increasing the value of `--eval-num-samples` to sample the model multiple times from the same initial state. `--help` can always be used to see all flags and their descriptions.
 
+To reconstruct random sequences from AMASS (i.e. encode then decode them), use:
+```
+python humor/test/test_humor.py @./configs/test_humor_recon.cfg
+```
+
 ### Training Initial State GMM
 Test-time optimization also uses a Gaussian mixture model (GMM) prior over the initial state of the sequence. The pretrained model can be downloaded above, but if you wish to train from scratch, run:
 ```
