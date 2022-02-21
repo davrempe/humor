@@ -784,7 +784,8 @@ class HumorModel(nn.Module):
 
     def roll_out(self, x_past, init_input_dict, num_steps, use_mean=False, 
                     z_seq=None, return_prior=False, gender=None, betas=None, return_z=False,
-                    canonicalize_input=False):
+                    canonicalize_input=False,
+                    uncanonicalize_output=False):
         '''
         Given input for first step, roll out using own output the entire time by sampling from the prior.
         Returns the global trajectory.
@@ -801,7 +802,7 @@ class HumorModel(nn.Module):
         -betas : B x steps_in x D
         -return_z : returns the sampled z sequence in addition to the output
         - canonicalize_input : if true, the input initial state is assumed to not be in the local aligned coordinate system. It will be transformed before using.
-
+        - uncanonicalize_output : if true and canonicalize_input=True, will transform output back into the input frame rather than return in canonical frame.
         Returns: 
         - x_pred - dict of (B x num_steps x D_out) for each value. Rotations are all matrices.
         '''
@@ -809,11 +810,11 @@ class HumorModel(nn.Module):
         cur_input_dict = init_input_dict
 
         # need to transform init input to local frame
+        world2aligned_rot = world2aligned_trans = None
         if canonicalize_input:
             B, _, _ = cur_input_dict[list(cur_input_dict.keys())[0]].size()
             # must transform initial input into the local frame
             # get world2aligned rot and translation
-            world2aligned_rot = world2aligned_trans = None
             root_orient_mat = cur_input_dict['root_orient']
             pose_body_mat = cur_input_dict['pose_body']
             if 'root_orient' in self.data_names and self.in_rot_rep != 'mat':
@@ -856,6 +857,9 @@ class HumorModel(nn.Module):
 
         global_world2local_rot = torch.eye(3).reshape((1, 1, 3, 3)).expand((B, 1, 3, 3)).to(x_past)
         global_world2local_trans = torch.zeros((B, 1, 3)).to(x_past)
+        if canonicalize_input and uncanonicalize_output:
+            global_world2local_rot = world2aligned_rot.unsqueeze(1)
+            global_world2local_trans = world2aligned_trans.unsqueeze(1)
         trans2joint = torch.zeros((B,1,1,3)).to(x_past)
         if self.need_trans2joint:
             trans2joint = -torch.cat([cur_input_dict['joints'][:,-1,:2], torch.zeros((B, 1)).to(x_past)], axis=1).reshape((B,1,1,3)) # same for whole sequence

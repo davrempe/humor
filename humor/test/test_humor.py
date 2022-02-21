@@ -158,6 +158,13 @@ def test(args_obj, config_file):
                             viz_pred_joints=args.viz_pred_joints,
                             viz_smpl_joints=args.viz_smpl_joints)
 
+    if args.eval_recon or args.eval_recon_debug:
+        eval_recon(model, test_dataset, test_loader, device,
+                            out_dir=args.out if args.eval_recon else None,
+                            viz_contacts=args.viz_contacts,
+                            viz_pred_joints=args.viz_pred_joints,
+                            viz_smpl_joints=args.viz_smpl_joints)
+
     Logger.log('Finished!')
 
 def eval_sampling(model, test_dataset, test_loader, device, 
@@ -230,6 +237,105 @@ def eval_sampling(model, test_dataset, test_loader, device,
                                 show_pred_joints=viz_pred_joints,
                                 show_contacts=viz_contacts
                               )
+
+def eval_recon(model, test_dataset, test_loader, device, 
+                  out_dir=None,
+                  num_samples=1,
+                  samp_len=10.0,
+                  viz_contacts=False,
+                  viz_pred_joints=False,
+                  viz_smpl_joints=False):
+    Logger.log('Evaluating reconstruction qualitatively...')
+    from body_model.body_model import BodyModel
+    from body_model.utils import SMPLH_PATH
+
+    res_out_dir = None
+    if out_dir is not None:
+        res_out_dir = os.path.join(out_dir, 'eval_recon')
+        if not os.path.exists(res_out_dir):
+            os.mkdir(res_out_dir)
+
+    J = len(SMPL_JOINTS)
+    V = NUM_KEYPT_VERTS
+    male_bm_path = os.path.join(SMPLH_PATH, 'male/model.npz')
+    female_bm_path = os.path.join(SMPLH_PATH, 'female/model.npz')
+    male_bm = BodyModel(bm_path=male_bm_path, num_betas=16, batch_size=test_dataset.sample_num_frames).to(device)
+    female_bm = BodyModel(bm_path=female_bm_path, num_betas=16, batch_size=test_dataset.sample_num_frames).to(device)
+
+    with torch.no_grad():
+        test_dataset.pre_batch()
+        model.eval()
+        for i, data in enumerate(test_loader):
+            # get inputs
+            batch_in, batch_out, meta = data
+            print(meta['path'])
+            seq_name_list = [spath[:-4] for spath in meta['path']]
+            if res_out_dir is None:
+                batch_res_out_list = [None]*len(seq_name_list)
+            else:
+                batch_res_out_list = [os.path.join(res_out_dir, seq_name.replace('/', '_') + '_b' + str(i) + 'seq' + str(sidx)) for sidx, seq_name in enumerate(seq_name_list)]
+                print(batch_res_out_list)
+
+            _, _, _, global_gt_dict = model.prepare_input(batch_in, device, 
+                                                            data_out=batch_out,
+                                                            return_input_dict=False,
+                                                            return_global_dict=True)
+            
+            # # NOTE: DEBUG add random translation to ensure canonicalization is properly handled in infer_global_seq and roll_out
+            global_gt_dict['trans'] += torch.tensor([5.0, 5.0, 0.0]).reshape((1,1,1,3)).to(global_gt_dict['trans'])
+            global_gt_dict['joints'] += torch.tensor([5.0, 5.0, 0.0]).reshape((1,1,1,3)).expand((1,1,22,3)).reshape((1,1,1,66)).to(global_gt_dict['joints'])
+
+            # model doesn't take in contacts, only ['trans', 'trans_vel', 'root_orient', 'root_orient_vel', 'pose_body', 'joints', 'joints_vel']
+            #   also don't need extra dimension that loader gives by default.
+            global_in_dict = {k : v[:,:,0].clone() for k,v in global_gt_dict.items() if k != 'contacts'}
+
+            # Encode. i.e. infer latent z vector for all pairs of frames in the seq
+            #           Note this function can handle arbitrary "global" sequences
+            #           (i.e. the first frame doesn't have to be in canonical system already, it will do this internally)
+            encode_results = model.infer_global_seq(global_in_dict)
+            prior_z_out, posterior_z_out = encode_results
+            latent_z_seq = posterior_z_out[0] # use mean of the posterior (encoder) output
+            # Decode. roll out reconstructed motion starting from initial step using the latent z sequence
+            #   for this, only need the step at t=0, but do need the extra dimension, i.e. should be size (B, 1, D)
+            decode_input_dict = {k : v[:,0].clone() for k, v in global_gt_dict.items() if k != 'contacts'} 
+            # canonicalize_input=True allows it to handle any "global" inial state input (i.e. doesn't need to be in canonical frame already)
+            #       and uncanonicalize_output will transform back into the input "global" frame
+            x_pred_dict = model.roll_out(None, decode_input_dict, latent_z_seq.size(1),
+                                         z_seq=latent_z_seq,
+                                         gender=meta['gender'],
+                                         betas=meta['betas'].to(device),
+                                         canonicalize_input=True,
+                                         uncanonicalize_output=True) 
+
+            # assemble full reconstruction (initial state + decoded states)
+            recon_pred_dict = {k : torch.cat([v[:,0:1,0], x_pred_dict[k]], dim=1) for k, v in global_gt_dict.items()}
+
+            # visualize and save
+            print('Visualizing ground truth!')
+            imsize = (1080, 1080)
+            cur_res_out_list = batch_res_out_list
+            if res_out_dir is not None:
+                cur_res_out_list = [out_path + '_gt' for out_path in batch_res_out_list]
+                imsize = (720, 720)
+            viz_gt_dict = {k : v[:,:,0] for k,v in global_gt_dict.items()}
+            viz_eval_samp(global_gt_dict, viz_gt_dict, meta, male_bm, female_bm, cur_res_out_list,
+                            imw=imsize[0],
+                            imh=imsize[1],
+                            show_smpl_joints=viz_smpl_joints,
+                            show_pred_joints=viz_pred_joints,
+                            show_contacts=viz_contacts
+                            )
+            print('Visualizing reconstruction!')
+            cur_res_out_list = batch_res_out_list
+            if res_out_dir is not None:
+                cur_res_out_list = [out_path + '_recon' for out_path in batch_res_out_list]
+            viz_eval_samp(global_gt_dict, recon_pred_dict, meta, male_bm, female_bm, cur_res_out_list,
+                            imw=imsize[0],
+                            imh=imsize[1],
+                            show_smpl_joints=viz_smpl_joints,
+                            show_pred_joints=viz_pred_joints,
+                            show_contacts=viz_contacts
+                            )
 
 def viz_eval_samp(global_gt_dict, x_pred_dict, meta, male_bm, female_bm, out_path_list,
                     imw=720,

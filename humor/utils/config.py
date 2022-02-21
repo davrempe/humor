@@ -156,6 +156,8 @@ class TestConfig(BaseConfig):
         self.parser.add_argument('--eval-test', dest='eval_full_test', action='store_true', help="Evaluate on the full test set with same metrics as during training.")
         self.parser.set_defaults(eval_full_test=False)
         self.parser.add_argument('--eval-num-samples', type=int, default=1, help='Number of times to sample the model for the same initial state for eval_sampling evalutations.')
+        self.parser.add_argument('--eval-recon', dest='eval_recon', action='store_true', help="Visualizes reconstructions of random AMASS sequences")
+        self.parser.add_argument('--eval-recon-debug', dest='eval_recon_debug', action='store_true', help="Interactively visualizes reconstructions of random AMASS sequences")
 
         self.parser.add_argument('--viz-contacts', dest='viz_contacts', action='store_true', help="For visualization, body mesh is translucent and contacts are shown on SMPL joint skeleton.")
         self.parser.set_defaults(viz_contacts=False)
