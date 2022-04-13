@@ -429,7 +429,7 @@ def main(args, config_file):
     if args.data_type == 'RGB' and args.save_results:
         Logger.log('Saving final results...')
         seq_intervals = dataset.seq_intervals
-        save_rgb_stitched_result(seq_intervals, cur_res_out_paths, res_out_path, device,
+        save_rgb_stitched_result(seq_intervals, res_out_path, device,
                                  body_model_path, num_betas, use_joints2d)
 
 

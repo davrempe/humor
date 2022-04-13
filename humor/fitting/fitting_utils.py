@@ -262,7 +262,10 @@ def log_cur_stats(stats_dict, loss, iter=None):
     Logger.log('LOSS: %f' % (loss.cpu().item()))
     print('----')
     for k, v in stats_dict.items():
-        Logger.log('%s: %f' % (k, v.cpu().item()))
+        if isinstance(v, float):
+            Logger.log('%s: %f' % (k, v))
+        else:
+            Logger.log('%s: %f' % (k, v.cpu().item()))
     if iter is not None:
         print('======= iter %d =======' % (int(iter)))
     else:
@@ -392,7 +395,7 @@ def save_optim_result(cur_res_out_paths, optim_result, per_stage_results, gt_dat
         np.savez(obs_out_path, **cur_obs_out)    
 
 
-def save_rgb_stitched_result(seq_intervals, cur_res_out_paths, res_out_path, device,
+def save_rgb_stitched_result(seq_intervals, res_out_path, device,
                                 body_model_path, num_betas, use_joints2d):
     import cv2
     seq_overlaps = [0]
@@ -402,7 +405,7 @@ def save_rgb_stitched_result(seq_intervals, cur_res_out_paths, res_out_path, dev
         seq_overlaps.append(prev_end - cur_start)
 
     # if arbitray RGB video data, stitch together to save full sequence output
-    all_res_dirs = cur_res_out_paths
+    all_res_dirs = sorted([os.path.join(res_out_path, f) for f in os.listdir(res_out_path) if os.path.isdir(os.path.join(res_out_path, f))])
 
     final_res_out_path = os.path.join(res_out_path, 'final_results')
     mkdir(final_res_out_path)
