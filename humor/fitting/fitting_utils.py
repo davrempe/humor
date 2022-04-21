@@ -26,7 +26,7 @@ def read_keypoints(keypoint_fn):
         data = json.load(keypoint_file)
 
     if len(data['people']) == 0:
-        print('Found no keypoints in %s! Returning zeros!' % (keypoint_fn))
+        print('WARNING: Found no keypoints in %s! Returning zeros!' % (keypoint_fn))
         return np.zeros((OP_NUM_JOINTS, 3), dtype=np.float)
 
     person_data = data['people'][0]

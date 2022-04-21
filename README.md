@@ -44,7 +44,7 @@ Detailed instructions to install, configure, and process each dataset are in [th
 Pretrained model checkpoints are available for HuMoR, HuMoR-Qual, and the initial state Gaussian mixture. To download (~215 MB), from the repo root run `bash get_ckpt.sh`.
 
 ### OpenPose
-[OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) is used to detect 2D joints for fitting to arbitrary RGB videos. If you will be running test-time optimization on the demo video or your own videos, you must install OpenPose. To clone and build, please follow the [OpenPose README](https://github.com/CMU-Perceptual-Computing-Lab/openpose) in their repo.
+[OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) is used to detect 2D joints for fitting to arbitrary RGB videos. If you will be running test-time optimization on the demo video or your own videos, you must install OpenPose (unless you pass in pre-computed OpenPose results using `--op-keypts`). To clone and build, please follow the [OpenPose README](https://github.com/CMU-Perceptual-Computing-Lab/openpose) in their repo.
 
 Optimization in [run_fitting.py](./humor/fitting/run_fitting.py) assumes OpenPose is installed at `./external/openpose` by default - if you install elsewhere, please pass in the location using the `--openpose` flag. 
 
@@ -63,6 +63,8 @@ This configuration optimizes over the entire video (~3 sec) at once (i.e. over a
 If known, it's **highly recommended to pass in camera intrinsics** using the `--rgb-intrinsics` flag. See `./configs/intrinsics_default.json` for an example of what this looks like. If intrinsics are _not_ given, [default focal lengths](./humor/fitting/fitting_utils.py#L19) are used.
 
 Finally, this demo does _not_ use [PlaneRCNN](https://github.com/NVlabs/planercnn) to initialize the ground as described in the paper. Instead, it roughly initializes the ground at `y = 0.5` (with camera up-axis `-y`). We found this to be sufficient and often better than using PlaneRCNN. If you want to use PlaneRCNN instead, set up a separate environment, follow their install instructions, then use the following command to run their method where `example_image_dir` contains a single frame from your video and the camera parameters: `python evaluate.py --methods=f --suffix=warping_refine --dataset=inference --customDataFolder=example_image_dir`. The results directory can be passed into our optimization using the `--rgb-planercnn-res` flag.
+
+> Note: if you want to use your own OpenPose detections rather than having the fitting script run OpenPose, pass in the directory containing the json files using `--op-keypts`. The [expected format](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/doc/02_output.md#json-output-format) of these json files is that written using the `--write_json` flag when running OpenPose with the `BODY_25` skeleton and unnormalized 2D keypoints. Note that only the `pose_keypoints_2d` (body joints) of the first detected person in each json file is used for fitting.
 
 ### Visualizing RGB Results
 The optimization is performed in 3 stages, with stages 1 & 2 being initialization using a pose prior and smoothing (i.e. the _VPoser-t_ baseline) and stage 3 being the full optimization with the HuMoR motion prior. So for the demo, the final output for the full sequence will be saved in `./out/rgb_demo_no_split/results_out/final_results/stage3_results.npz`. To visualize results from the fitting use something like:

@@ -12,6 +12,7 @@ def parse_args(argv):
     parser.add_argument('--batch-size', type=int, default=1, help='Number of sequences to batch together for fitting to data.')
     parser.add_argument('--shuffle', dest='shuffle', action='store_true', help="Shuffles data.")
     parser.set_defaults(shuffle=False)
+    parser.add_argument('--op-keypts', type=str, default=None, help='(optional) path to a directory of custom detected OpenPose keypoints to use for RGB fitting rather than running OpenPose before optimization.')
 
     # AMASS-specific options
     parser.add_argument('--amass-split-by', type=str, default='dataset', choices=['single', 'sequence', 'subject', 'dataset'], help='How to split the dataset into train/test/val.')

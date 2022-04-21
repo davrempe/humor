@@ -120,8 +120,10 @@ def main(args, config_file):
             mask_out_path = os.path.join(video_preprocess_path, 'masks')
         op_out_path = os.path.join(video_preprocess_path, 'op_keypoints')
 
-        # if we already did precprocessing (ran sam video before), skip it
-        if not os.path.exists(video_preprocess_path):
+        use_custom_keypts = args.op_keypts is not None
+
+        # if we already did preprocessing (ran same video before), skip it
+        if not os.path.exists(video_preprocess_path) or (not use_custom_keypts and not os.path.exists(op_out_path)):
             mkdir(video_preprocess_path)
             # video -> images (at 30 Hz) - save to new output directory
             img_folder, _, img_shape = video_to_images(args.data_path,
@@ -130,12 +132,14 @@ def main(args, config_file):
                                                             return_info=True)
             print(img_folder)
             print(img_shape)
-            # OpenPose on images
-            op_frames_out = os.path.join(video_preprocess_path, 'op_frames')
-            run_openpose(args.openpose, img_folder,
-                        op_out_path,
-                        img_out=op_frames_out,
-                        video_out=os.path.join(video_preprocess_path, 'op_keypoints_overlay.mp4'))
+
+            if not use_custom_keypts:
+                # OpenPose on images
+                op_frames_out = os.path.join(video_preprocess_path, 'op_frames')
+                run_openpose(args.openpose, img_folder,
+                            op_out_path,
+                            img_out=op_frames_out,
+                            video_out=os.path.join(video_preprocess_path, 'op_keypoints_overlay.mp4'))
 
             # if desired segmentation mask on images
             if args.mask_joints2d:
@@ -149,6 +153,11 @@ def main(args, config_file):
             if args.mask_joints2d and not os.path.exists(mask_out_path):
                 print('Could not find detected masks from previous pre-processing! Please delete rgb_preprocess directory and re-run!')
                 exit()
+
+        if use_custom_keypts:
+            assert os.path.exists(args.op_keypts), 'Could not find custom keypoints path %s!' % (args.op_keypts)
+            print('Using pre-detected OpenPose keypoints from %s...' % (args.op_keypts))
+            op_out_path = args.op_keypts
 
         # read in intrinsics if given
         cam_mat = None
