@@ -11,6 +11,7 @@ cur_file_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(cur_file_path, '..'))
 
 import importlib, time, math, shutil, json
+import traceback
 
 import numpy as np
 
@@ -400,32 +401,37 @@ def main(args, config_file):
                                     im_dim=im_dim)
 
         # run optimizer
-        optim_result, per_stage_results = optimizer.run(observed_data,
-                                                        data_fps=data_fps,
-                                                        lr=args.lr,
-                                                        num_iter=args.num_iters,
-                                                        lbfgs_max_iter=args.lbfgs_max_iter,
-                                                        stages_res_out=cur_res_out_paths,
-                                                        fit_gender=fit_gender)
+        try:
+            optim_result, per_stage_results = optimizer.run(observed_data,
+                                                            data_fps=data_fps,
+                                                            lr=args.lr,
+                                                            num_iter=args.num_iters,
+                                                            lbfgs_max_iter=args.lbfgs_max_iter,
+                                                            stages_res_out=cur_res_out_paths,
+                                                            fit_gender=fit_gender)
 
-        # save final results
-        if cur_res_out_paths is not None:
-            save_optim_result(cur_res_out_paths, optim_result, per_stage_results, gt_data, observed_data, args.data_type,
-                                optim_floor=optimizer.optim_floor,
-                                obs_img_paths=obs_img_paths,
-                                obs_mask_paths=obs_mask_paths)
+            # save final results
+            if cur_res_out_paths is not None:
+                save_optim_result(cur_res_out_paths, optim_result, per_stage_results, gt_data, observed_data, args.data_type,
+                                    optim_floor=optimizer.optim_floor,
+                                    obs_img_paths=obs_img_paths,
+                                    obs_mask_paths=obs_mask_paths)
 
-        elapsed_t = time.time() - start_t
-        Logger.log('Optimized sequence %d in %f s' % (i, elapsed_t))
+            elapsed_t = time.time() - start_t
+            Logger.log('Optimized sequence %d in %f s' % (i, elapsed_t))
 
-        # cache last verts, floor, and betas from last batch index to use in consistency loss
-        #   for next batch
-        if use_overlap_loss:
-            prev_batch_overlap_res_dict = dict()
-            prev_batch_overlap_res_dict['verts3d'] = per_stage_results['stage3']['verts3d'][-1].clone().detach()
-            prev_batch_overlap_res_dict['betas'] = optim_result['betas'][-1].clone().detach()
-            prev_batch_overlap_res_dict['floor_plane'] = optim_result['floor_plane'][-1].clone().detach()
-            prev_batch_overlap_res_dict['seq_interval'] = observed_data['seq_interval'][-1].clone().detach()
+            # cache last verts, floor, and betas from last batch index to use in consistency loss
+            #   for next batch
+            if use_overlap_loss:
+                prev_batch_overlap_res_dict = dict()
+                prev_batch_overlap_res_dict['verts3d'] = per_stage_results['stage3']['verts3d'][-1].clone().detach()
+                prev_batch_overlap_res_dict['betas'] = optim_result['betas'][-1].clone().detach()
+                prev_batch_overlap_res_dict['floor_plane'] = optim_result['floor_plane'][-1].clone().detach()
+                prev_batch_overlap_res_dict['seq_interval'] = observed_data['seq_interval'][-1].clone().detach()
+
+        except Exception as e:
+            Logger.log('Caught error in current optimization! Skipping...')
+            Logger.log(traceback.format_exc())
 
         if i < (len(data_loader) - 1):
             del optimizer
