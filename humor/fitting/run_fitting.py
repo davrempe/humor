@@ -260,6 +260,9 @@ def main(args, config_file):
             Logger.log('Could not find init motion state prior at given directory!')
             exit()
 
+    if args.data_type == 'RGB' and args.save_results:
+        all_res_out_paths = []
+
     fit_errs = dict()
     prev_batch_overlap_res_dict = None
     use_overlap_loss = sum(loss_weights['rgb_overlap_consist']) > 0.0
@@ -334,6 +337,8 @@ def main(args, config_file):
                 mkdir(cur_res_out_path)
                 cur_res_out_paths.append(cur_res_out_path)
         cur_res_out_paths = cur_res_out_paths if len(cur_res_out_paths) > 0 else None
+        if cur_res_out_paths is not None and args.data_type == 'RGB' and args.save_results:
+            all_res_out_paths += cur_res_out_paths
         cur_z_init_paths = cur_z_init_paths if len(cur_z_init_paths) > 0 else None
         cur_z_final_paths = cur_z_final_paths if len(cur_z_final_paths) > 0 else None
 
@@ -444,7 +449,7 @@ def main(args, config_file):
     if args.data_type == 'RGB' and args.save_results:
         Logger.log('Saving final results...')
         seq_intervals = dataset.seq_intervals
-        save_rgb_stitched_result(seq_intervals, res_out_path, device,
+        save_rgb_stitched_result(seq_intervals, all_res_out_paths, res_out_path, device,
                                  body_model_path, num_betas, use_joints2d)
 
 
