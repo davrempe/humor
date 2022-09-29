@@ -27,7 +27,7 @@ print = lambda x: logging.info(x)
 # Processing options
 #
 
-OUT_FPS = 20
+OUT_FPS = 30
 SAVE_KEYPT_VERTS = True # save vertex locations of certain keypoints
 SAVE_HAND_POSE = False # save joint angles for the hand
 SAVE_VELOCITIES = True # save all parameter velocities available
