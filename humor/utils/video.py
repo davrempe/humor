@@ -69,7 +69,8 @@ def run_openpose(openpose_path, img_dir, out_dir, video_out=None, img_out=None):
     # then run openpose
     run_cmds = ['./build/examples/openpose/openpose.bin', \
                 '--image_dir', img_dir, '--write_json', out_dir, \
-                '--display', '0', '--model_pose', SKELETON, '--number_people_max', '1']
+                '--display', '0', '--model_pose', SKELETON, '--number_people_max', '1', \
+                '--num_gpu', '1']
     if video_out is not None:
         run_cmds +=  ['--write_video', video_out, '--write_video_fps', '30']
     if img_out is not None:
