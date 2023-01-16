@@ -373,7 +373,7 @@ class MotionOptimizer():
                 vel_root_orient = prior_data_dict['root_orient']
 
             self.trans_vel, self.joints_vel, self.root_orient_vel = \
-                        self.estimate_velocities(self.trans, self.root_orient, cur_body_pose, self.betas, data_fps)
+                        self.estimate_velocities(vel_trans, vel_root_orient, cur_body_pose, self.betas, data_fps)
             
             self.trans_vel = self.trans_vel[:,:1].detach()
             self.joints_vel = self.joints_vel[:,:1].detach()
